@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Планировщик</title>
+<style>
+:root {
+  --bg: #121212;
+  --card: #1e1e1e;
+  --accent: #7c4dff;
+  --accent-light: #9575cd;
+  --text: #e0e0e0;
+  --muted: #9e9e9e;
+  --success: #4caf50;
+  --success-light: #81c784;
+  --danger: #ef5350;
+  --circle-done: #4caf50;
+  --circle-undone: #444;
+  --achievement-earned-bg: #2e7d32;
+  --achievement-earned-text: #c8e6c9;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 70px; /* для нижнего меню */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+body * {
+  user-select: text; /* для текстовых элементов */
+}
+header {
+  background: var(--card);
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  user-select: none;
+}
+main {
+  padding: 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.hidden {
+  display: none;
+}
+
+/* Нижнее меню */
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  background: var(--card);
+  display: flex;
+  justify-content: space-around;
+  padding: 0.5rem 0;
+  border-top: 1px solid #2c2c2c;
+  user-select: none;
+  z-index: 20;
+}
+nav button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.3s;
+  padding: 0.3rem 0.6rem;
+}
+nav button.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Неделя - гармоничный и адаптивный */
+.weekbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0;
+  user-select: none;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  padding: 0 40px; /* место для стрелок */
+  box-sizing: border-box;
+}
+.weekbar-inner {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 700px;
+  user-select: none;
+}
+/* Добавлено расстояние между днями недели */
+.weekday {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card);
+  padding: 0.5rem 0.2rem;
+  margin: 0 4px; /* добавлено расстояние */
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 44px;
+  user-select: none;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  color: var(--text);
+  flex-shrink: 0;
+  user-select: none;
+  outline-offset: 2px;
+}
+/* На ноутбуках сохраняется расстояние */
+@media(min-width: 769px) {
+  .weekday {
+    margin: 0 4px;
+  }
+}
+/* На мобильных устройствах элементы меньше, чтобы помещалась неделя со стрелками */
+@media(max-width: 768px) {
+  .weekbar {
+    padding: 0 10px;
+  }
+  .weekday {
+    min-width: 32px;
+    font-size: 0.7rem;
+    margin: 0 1px;
+    padding: 0.3rem 0.1rem;
+  }
+  .weekbar-inner {
+    max-width: 100%;
+  }
+  .weekbar button {
+    width: 28px;
+    height: 28px;
+    font-size: 1.1rem;
+    padding: 0;
+  }
+}
+.weekbar button {
+  background: var(--card);
+  border: none;
+  color: var(--accent);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  line-height: 1;
+}
+.weekbar button:hover {
+  background: var(--accent-light);
+}
+.weekday.active {
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+}
+.weekday:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Убрана рамка у weekday-name */
+.weekday-name {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+  color: var(--accent);
+  /* border убрана */
+  border-radius: 6px;
+  padding: 0 6px;
+  width: fit-content;
+  user-select: none;
+  transition: color 0.3s ease;
+}
+/* При активном/выбранном дне меняем цвет текста */
+.weekday.active .weekday-name {
+  color: white;
+}
+
+/* Список элементов */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+li {
+  background: var(--card);
+  margin: 0.5rem 0;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+li:hover {
+  background: #292929;
+}
+li.done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* Кнопка удалить - уменьшен размер текста и padding */
+.delete-btn {
+  background: var(--danger);
+  border: none;
+  color: white;
+  padding: 0.25rem 0.5rem; /* уменьшено */
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem; /* уменьшен текст */
+  line-height: 1;
+  margin-left: 0.5rem;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* Кнопка создать */
+.create-btn {
+  display: block;
+  margin: 1rem auto 1.5rem auto;
+  padding: 1rem 2rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  text-align: center;
+  max-width: 260px;
+  width: 100%;
+}
+.create-btn:hover {
+  background: var(--accent-light);
+}
+
+/* Модалка */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.modal.active {
+  display: flex;
+}
+.modal-content {
+  background: var(--card);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 0 20px rgba(124, 77, 255, 0.5);
+  color: var(--text);
+  user-select: text;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-content label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  user-select: text;
+}
+.modal-content input[type="text"],
+.modal-content select,
+.modal-content textarea,
+.modal-content input[type="date"],
+.modal-content .linked-checkboxes {
+  width: 100%;
+  margin-top: 6px;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  background: #292929;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+.modal-content textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.modal-content .date-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  user-select: none;
+}
+.modal-content .date-toggle label {
+  font-weight: normal;
+  font-size: 0.9rem;
+}
+.modal-content button[type="submit"] {
+  margin-top: 20px;
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+.modal-content button[type="submit"]:hover {
+  background: var(--accent-light);
+}
+
+/* Кружок выполнено справа */
+.done-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--circle-undone);
+  margin-left: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: transparent;
+}
+.done-circle.done {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  user-select: none;
+}
+.done-circle:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Статистика */
+.stats-filter {
+  text-align: center;
+  margin-bottom: 1rem;
+  user-select: none;
+}
+.stats-filter button {
+  background: var(--card);
+  border: none;
+  color: var(--text);
+  padding: 0.6rem 1.2rem;
+  margin: 0.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+.stats-filter button.active {
+  background: var(--accent);
+}
+
+/* График - canvas */
+canvas {
+  width: 100%;
+  max-width: 700px;
+  height: 320px;
+  background: var(--card);
+  border-radius: 12px;
+  display: block;
+  margin: 0 auto 30px auto;
+  user-select: none;
+  box-shadow: 0 0 12px rgba(124, 77, 255, 0.3);
+}
+
+/* Новый стиль для секций с кружками под графиком */
+.stats-dates-sections {
+  max-width: 700px;
+  margin: 0 auto 30px auto;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  user-select: none;
+}
+.stats-dates-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+.stats-dates-section .day-label {
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: var(--muted);
+  user-select: none;
+}
+.stats-dates-section .date-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2.5px solid var(--circle-undone);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: default;
+  user-select: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.stats-dates-section .date-circle.done {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+/* Аккаунт - достижения и статистика */
+.achievements-wrapper {
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto 1rem auto;
+  user-select: none;
+  height: 72px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Убрана общая рамка у контейнера достижений */
+.achievements-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 0;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none;
+  scroll-padding-left: 50px;
+  scroll-padding-right: 50px;
+  height: 56px;
+  align-items: center;
+  width: 100%;
+  max-width: 700px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: var(--card);
+  padding-left: 0;
+  padding-right: 0;
+}
+.achievements-container::-webkit-scrollbar {
+  display: none;
+}
+.achievement {
+  flex: 0 0 auto;
+  background: var(--card);
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  user-select: text;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+  color: var(--text);
+  white-space: normal;
+  word-break: break-word;
+  position: relative;
+  min-width: 230px;
+  max-width: 230px;
+  user-select: none;
+  line-height: 1.3;
+  border-left: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  box-sizing: border-box;
+}
+.achievement:first-child {
+  border-left: none;
+}
+.achievement:last-child {
+  border-right: none;
+}
+.achievement.earned {
+  background-color: var(--achievement-earned-bg);
+  color: var(--achievement-earned-text);
+  border: 2px solid var(--success-light);
+}
+.achievement.not-earned {
+  opacity: 0.5;
+}
+
+/* Стрелки для прокрутки достижений - подняты по центру кнопок */
+.achievements-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--card);
+  border-radius: 50%;
+  border: none;
+  color: var(--accent);
+  font-size: 2rem;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 0 6px rgba(124, 77, 255, 0.6);
+  transition: background-color 0.2s ease;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+  margin-top: 0; /* убрал сдвиг */
+}
+.achievements-arrow.left {
+  left: -50px;
+}
+.achievements-arrow.right {
+  right: -50px;
+}
+.achievements-arrow:hover {
+  background: var(--accent-light);
+  color: white;
+}
+.achievements-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Аккаунт - списки с цифрами */
+#accountLists {
+  margin-top: 20px;
+  font-size: 1rem;
+  user-select: text;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--text);
+}
+#accountLists h4 {
+  margin-bottom: 5px;
+  border-bottom: 1px solid var(--muted);
+  padding-bottom: 4px;
+  text-transform: capitalize;
+  cursor: pointer;
+  color: var(--accent);
+  user-select: none;
+}
+#accountLists p {
+  margin: 3px 0 12px 6px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent);
+}
+#elementDescBox {
+  background: var(--card);
+  padding: 1rem;
+  margin-top: 10px;
+  border-radius: 10px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  color: var(--text);
+  user-select: text;
+  min-height: 40px;
+}
+
+/* Кнопки удаления истории - уменьшены размер и текст */
+#accountActions {
+  max-width: 700px;
+  margin: 1.5rem auto 0 auto;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+#accountActions button {
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.5rem 1rem; /* уменьшено */
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  min-width: 140px; /* уменьшена ширина */
+  font-size: 1rem; /* уменьшен текст */
+  line-height: 1.2;
+}
+#accountActions button:hover {
+  background: #b71c1c;
+}
+
+/* Стили для фокуса */
+button:focus, div[tabindex="0"]:focus, li:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  main {
+    padding: 0.5rem 1rem;
+  }
+  .achievements-arrow.left {
+    left: -40px;
+  }
+  .achievements-arrow.right {
+    right: -40px;
+  }
+  #accountActions {
+    flex-direction: column;
+    align-items: center;
+  }
+  #accountActions button {
+    min-width: 100%;
+  }
+}
+
+/* Убираем слово "Статистика" на странице статистики */
+#page-stats > h3 {
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<header>Планировщик</header>
+
+<main>
+  <!-- Главная -->
+  <section id="page-main">
+    <div class="weekbar" aria-label="Навигация по неделям">
+      <button id="prevWeek" aria-label="Предыдущая неделя">‹</button>
+      <div class="weekbar-inner" id="weekdays" style="display:flex;"></div>
+      <button id="nextWeek" aria-label="Следующая неделя">›</button>
+    </div>
+    <h3>Элементы на выбранный день</h3>
+    <ul id="taskList" aria-live="polite"></ul>
+  </section>
+
+  <!-- Создать -->
+  <section id="page-create" class="hidden" aria-label="Создание элементов">
+    <button class="create-btn" id="openCreateModalBtn" aria-haspopup="dialog" aria-controls="createModal">+ Создать новый элемент</button>
+    <h3>Последние созданные элементы</h3>
+    <ul id="recentList" aria-live="polite"></ul>
+  </section>
+
+  <!-- Статистика -->
+  <section id="page-stats" class="hidden" aria-label="Статистика">
+    <div class="stats-filter" role="radiogroup" aria-label="Выбор периода статистики">
+      <button data-period="week" class="active" role="radio" aria-checked="true" tabindex="0">Неделя</button>
+      <button data-period="month" role="radio" aria-checked="false" tabindex="-1">Месяц</button>
+      <button data-period="year" role="radio" aria-checked="false" tabindex="-1">Год</button>
+    </div>
+    <canvas id="statsChart" width="600" height="320" aria-label="График статистики"></canvas>
+
+    <!-- Новая секция с кружками под графиком -->
+    <div id="statsDatesSections" class="stats-dates-sections" aria-label="Статистика по датам и дням недели"></div>
+  </section>
+
+  <!-- Аккаунт -->
+  <section id="page-account" class="hidden" aria-label="Аккаунт">
+    <div class="achievements-wrapper">
+      <button class="achievements-arrow left" aria-label="Прокрутить влево" tabindex="0">&#8249;</button>
+      <div class="achievements-container" role="region" aria-label="Достижения" tabindex="0" aria-live="polite">
+        <!-- Достижения вставятся сюда -->
+      </div>
+      <button class="achievements-arrow right" aria-label="Прокрутить вправо" tabindex="0">&#8250;</button>
+    </div>
+
+    <div id="accountLists" aria-live="polite"></div>
+    <div id="elementDescBox" aria-live="polite" role="region" aria-label="Описание выбранного элемента"></div>
+
+    <!-- Кнопки удаления истории перенесены в самый низ страницы аккаунта -->
+    <div id="accountActions" aria-label="Действия с историей">
+      <button id="clearAllHistoryBtn" title="Удалить всю историю и данные">Удалить всю историю</button>
+      <button id="clearDoneHistoryBtn" title="Удалить только информацию о выполнении элементов">Очистить отметки выполненного</button>
+    </div>
+  </section>
+</main>
+
+<!-- Нижнее меню -->
+<nav role="navigation" aria-label="Главное меню">
+  <button id="nav-main" class="active" aria-controls="page-main" aria-selected="true" role="tab" tabindex="0">Главная</button>
+  <button id="nav-create" aria-controls="page-create" aria-selected="false" role="tab" tabindex="-1">Создать</button>
+  <button id="nav-stats" aria-controls="page-stats" aria-selected="false" role="tab" tabindex="-1">Статистика</button>
+  <button id="nav-account" aria-controls="page-account" aria-selected="false" role="tab" tabindex="-1">Аккаунт</button>
+</nav>
+
+<!-- Модальное окно -->
+<div class="modal" id="createModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+  <div class="modal-content">
+    <h3 id="modalTitle">Создать элемент</h3>
+    <form id="createForm" novalidate>
+      <label for="elementType">Тип</label>
+      <select id="elementType" name="elementType" required aria-required="true">
+        <option value="" disabled selected>Выберите...</option>
+        <option value="goal">Цель</option>
+        <option value="habit">Привычка</option>
+        <option value="task">Задача</option>
+        <option value="subtask">Подзадача</option>
+        <option value="event">Событие</option>
+      </select>
+
+      <label for="elementTitle">Название</label>
+      <input id="elementTitle" type="text" name="elementTitle" required aria-required="true" autocomplete="off" />
+
+      <label for="elementDesc">Описание</label>
+      <textarea id="elementDesc" name="elementDesc" rows="3" placeholder="Необязательно"></textarea>
+
+      <label for="elementDateToggle" style="margin-top: 12px; display: block;">Бессрочная</label>
+      <input type="checkbox" id="elementDateToggle" name="elementDateToggle" checked />
+
+      <div class="date-toggle">
+        <label for="elementDate">Дата окончания (если не бессрочная)</label>
+        <input type="date" id="elementDate" name="elementDate" disabled />
+      </div>
+
+      <div id="linkToGoalContainer" style="margin-top: 12px; display:none;">
+        <label for="linkToGoal">Связать с целью (если это не цель)</label>
+        <select id="linkToGoal" name="linkToGoal">
+          <option value="">-- Выберите цель --</option>
+        </select>
+      </div>
+
+      <button type="submit">Создать</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// === Переменные ===
+const RUS_TYPES = {
+  goal: 'Цель',
+  habit: 'Привычка',
+  task: 'Задача',
+  subtask: 'Подзадача',
+  event: 'Событие'
+};
+
+let elements = JSON.parse(localStorage.getItem('plannerElements') || '[]');
+let doneByDate = JSON.parse(localStorage.getItem('doneByDate') || '{}');
+
+let statsPeriod = 'week';
+
+const pageMain = document.getElementById('page-main');
+const pageCreate = document.getElementById('page-create');
+const pageStats = document.getElementById('page-stats');
+const pageAccount = document.getElementById('page-account');
+
+const navMain = document.getElementById('nav-main');
+const navCreate = document.getElementById('nav-create');
+const navStats = document.getElementById('nav-stats');
+const navAccount = document.getElementById('nav-account');
+
+let currentMonday = getMonday(new Date());
+let selectedDate = new Date();
+
+// === Навигация между страницами ===
+function setActivePage(page) {
+  [pageMain, pageCreate, pageStats, pageAccount].forEach(p => p.classList.add('hidden'));
+  [navMain, navCreate, navStats, navAccount].forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+    b.setAttribute('tabindex', '-1');
+  });
+  page.classList.remove('hidden');
+
+  if (page === pageMain) {
+    navMain.classList.add('active');
+    navMain.setAttribute('aria-selected', 'true');
+    navMain.setAttribute('tabindex', '0');
+    renderWeek();
+    renderTasks(selectedDate);
+  } else if (page === pageCreate) {
+    navCreate.classList.add('active');
+    navCreate.setAttribute('aria-selected', 'true');
+    navCreate.setAttribute('tabindex', '0');
+    renderRecent();
+    fillGoalLinks();
+  } else if (page === pageStats) {
+    navStats.classList.add('active');
+    navStats.setAttribute('aria-selected', 'true');
+    navStats.setAttribute('tabindex', '0');
+    renderStats();
+  } else if (page === pageAccount) {
+    navAccount.classList.add('active');
+    navAccount.setAttribute('aria-selected', 'true');
+    navAccount.setAttribute('tabindex', '0');
+    renderAccount();
+  }
+}
+navMain.onclick = () => setActivePage(pageMain);
+navCreate.onclick = () => setActivePage(pageCreate);
+navStats.onclick = () => setActivePage(pageStats);
+navAccount.onclick = () => setActivePage(pageAccount);
+
+// === Неделя и выбор дня ===
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1) - day; // adjust when day is Sunday
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + diff);
+  return date;
+}
+function formatDateDMY(date) {
+  return `${date.getDate()}.${date.getMonth() + 1}`;
+}
+
+function renderWeek() {
+  const weekdaysEl = document.getElementById('weekdays');
+  weekdaysEl.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(currentMonday);
+    date.setDate(currentMonday.getDate() + i);
+    const div = document.createElement('div');
+    div.className = 'weekday';
+
+    const dayNameDiv = document.createElement('div');
+    dayNameDiv.className = 'weekday-name';
+    dayNameDiv.textContent = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i];
+
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'weekday-date';
+    dateDiv.textContent = formatDateDMY(date);
+
+    div.appendChild(dayNameDiv);
+    div.appendChild(dateDiv);
+
+    div.setAttribute('tabindex', '0');
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-pressed', 'false');
+    div.setAttribute('aria-label', `Выбрать день ${date.getDate()}.${date.getMonth()+1}`);
+    div.onclick = () => {
+      document.querySelectorAll('.weekday').forEach(w => {
+        w.classList.remove('active');
+        w.setAttribute('aria-pressed', 'false');
+      });
+      div.classList.add('active');
+      div.setAttribute('aria-pressed', 'true');
+      selectedDate = date;
+      renderTasks(date);
+    };
+    div.onkeydown = (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        div.click();
+      }
+    };
+    weekdaysEl.appendChild(div);
+  }
+  // По умолчанию выбираем понедельник текущей недели
+  weekdaysEl.firstChild.click();
+}
+document.getElementById('prevWeek').onclick = () => {
+  currentMonday.setDate(currentMonday.getDate() - 7);
+  renderWeek();
+};
+document.getElementById('nextWeek').onclick = () => {
+  currentMonday.setDate(currentMonday.getDate() + 7);
+  renderWeek();
+};
+
+// === Сохранение данных ===
+function saveElements() {
+  localStorage.setItem('plannerElements', JSON.stringify(elements));
+}
+function saveDoneByDate() {
+  localStorage.setItem('doneByDate', JSON.stringify(doneByDate));
+}
+
+// === Рендер элементов на главной ===
+function renderTasks(date) {
+  const taskList = document.getElementById('taskList');
+  taskList.innerHTML = '';
+  const dStr = date.toISOString().split('T')[0];
+
+  const filtered = elements.filter(e => {
+    if (e.type === 'goal') {
+      return e.date === dStr;
+    } else {
+      if (!e.date) return true;
+      return e.date >= dStr;
+    }
+  });
+
+  if (filtered.length === 0) {
+    taskList.innerHTML = '<li>Нет элементов на этот день</li>';
+    return;
+  }
+
+  filtered.forEach(e => {
+    const li = document.createElement('li');
+    const key = e.id + '|' + dStr;
+    const done = !!doneByDate[key];
+    if (done) li.classList.add('done');
+
+    li.textContent = `${RUS_TYPES[e.type] || e.type}: ${e.title}`;
+
+    const doneCircle = document.createElement('div');
+    doneCircle.className = 'done-circle' + (done ? ' done' : '');
+    doneCircle.setAttribute('role', 'checkbox');
+    doneCircle.setAttribute('aria-checked', done);
+    doneCircle.setAttribute('tabindex', '0');
+    doneCircle.title = done ? 'Отметить как невыполненное' : 'Отметить как выполненное';
+    doneCircle.onclick = (ev) => {
+      ev.stopPropagation();
+      if (done) delete doneByDate[key];
+      else doneByDate[key] = true;
+      saveDoneByDate();
+      updateGoalCompletion(e, dStr);
+      renderTasks(date);
+    };
+    doneCircle.onkeydown = (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        doneCircle.click();
+      }
+    };
+
+    li.appendChild(doneCircle);
+    taskList.appendChild(li);
+  });
+}
+
+function updateGoalCompletion(changedElement, dStr) {
+  if (changedElement.type === 'goal') return;
+  if (!changedElement.linkToGoal) return;
+
+  const goal = elements.find(e => e.id === changedElement.linkToGoal);
+  if (!goal) return;
+
+  const related = elements.filter(e => e.linkToGoal === goal.id);
+
+  const allDone = related.every(el => doneByDate[el.id + '|' + dStr]);
+
+  const goalKey = goal.id + '|' + dStr;
+  if (allDone) {
+    doneByDate[goalKey] = true;
+  } else {
+    delete doneByDate[goalKey];
+  }
+  saveDoneByDate();
+}
+
+function renderRecent() {
+  const list = document.getElementById('recentList');
+  list.innerHTML = '';
+  const last = elements.slice(-7).reverse();
+  if (last.length === 0) {
+    list.innerHTML = '<li>Нет созданных элементов</li>';
+    return;
+  }
+  last.forEach(e => {
+    const li = document.createElement('li');
+    li.textContent = `${RUS_TYPES[e.type] || e.type}: ${e.title}`;
+
+    const btn = document.createElement('button');
+    btn.className = 'delete-btn';
+    btn.textContent = '×';
+    btn.title = 'Удалить элемент';
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      if(e.type === 'goal'){
+        elements.forEach(el=>{
+          if(el.linkToGoal === e.id) delete el.linkToGoal;
+        });
+      }
+      elements = elements.filter(x => x !== e);
+      for (const key in doneByDate) {
+        if (key.startsWith(e.id + '|')) delete doneByDate[key];
+      }
+      saveElements();
+      saveDoneByDate();
+      renderRecent();
+      if (!pageMain.classList.contains('hidden')) renderTasks(selectedDate);
+      if (!pageAccount.classList.contains('hidden')) renderAccount();
+    };
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+const createModal = document.getElementById('createModal');
+const openCreateModalBtn = document.getElementById('openCreateModalBtn');
+const createForm = document.getElementById('createForm');
+const dateToggle = document.getElementById('elementDateToggle');
+const dateInput = document.getElementById('elementDate');
+const linkToGoalContainer = document.getElementById('linkToGoalContainer');
+const linkToGoalSelect = document.getElementById('linkToGoal');
+
+openCreateModalBtn.onclick = () => {
+  createModal.classList.add('active');
+  createForm.reset();
+  dateInput.disabled = true;
+  dateToggle.checked = true;
+  linkToGoalSelect.innerHTML = '<option value="">-- Выберите цель --</option>';
+  linkToGoalContainer.style.display = 'none';
+  document.getElementById('elementType').focus();
+};
+createModal.onclick = e => {
+  if (e.target === createModal) createModal.classList.remove('active');
+};
+dateToggle.onchange = () => {
+  dateInput.disabled = dateToggle.checked;
+  if (dateToggle.checked) dateInput.value = '';
+};
+
+document.getElementById('elementType').addEventListener('change', e => {
+  if (e.target.value === 'goal') {
+    linkToGoalContainer.style.display = 'none';
+    linkToGoalSelect.value = '';
+  } else {
+    fillGoalLinks();
+    linkToGoalContainer.style.display = 'block';
+  }
+});
+
+function fillGoalLinks() {
+  linkToGoalSelect.innerHTML = '<option value="">-- Выберите цель --</option>';
+  elements.filter(e => e.type === 'goal').forEach(goal => {
+    const option = document.createElement('option');
+    option.value = goal.id;
+    option.textContent = goal.title;
+    linkToGoalSelect.appendChild(option);
+  });
+}
+
+createForm.onsubmit = e => {
+  e.preventDefault();
+  const f = e.target;
+  const elType = f.elementType.value;
+  const title = f.elementTitle.value.trim();
+  const desc = f.elementDesc.value.trim();
+  const isInfinite = f.elementDateToggle.checked;
+  const dateVal = isInfinite ? null : f.elementDate.value;
+  const linkToGoal = elType === 'goal' ? null : f.linkToGoal.value || null;
+
+  if (!elType || !title) {
+    alert('Пожалуйста, заполните тип и название');
+    return;
+  }
+  const newEl = {
+    id: 'el-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    type: elType,
+    title: title,
+    desc: desc,
+    date: dateVal,
+    linkToGoal: linkToGoal,
+  };
+  elements.push(newEl);
+  saveElements();
+  createModal.classList.remove('active');
+  renderRecent();
+  if (!pageMain.classList.contains('hidden')) renderTasks(selectedDate);
+  if (!pageAccount.classList.contains('hidden')) renderAccount();
+};
+
+let chart;
+
+const statsFilterButtons = document.querySelectorAll('.stats-filter button');
+statsFilterButtons.forEach(btn => {
+  btn.onclick = () => {
+    statsFilterButtons.forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-checked', 'false');
+      b.setAttribute('tabindex', '-1');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-checked', 'true');
+    btn.setAttribute('tabindex', '0');
+    statsPeriod = btn.dataset.period;
+    renderStats();
+  };
+});
+
+function renderStats() {
+  const ctx = document.getElementById('statsChart').getContext('2d');
+
+  let labels = [];
+  let dataDone = [];
+  let dataTotal = [];
+
+  if (statsPeriod === 'week') {
+    labels = [];
+    dataDone = [];
+    dataTotal = [];
+    const start = getMonday(new Date());
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(start);
+      dt.setDate(start.getDate() + i);
+      labels.push(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]);
+      const dStr = dt.toISOString().slice(0, 10);
+      const doneCount = Object.entries(doneByDate).filter(([key, val]) => val && key.endsWith(dStr)).length;
+      const totalCount = elements.filter(el => !el.date || el.date >= dStr).length;
+      dataDone.push(doneCount);
+      dataTotal.push(totalCount);
+    }
+  } else if (statsPeriod === 'month') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    labels = [];
+    dataDone = [];
+    dataTotal = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      labels.push(d.toString());
+      const dateStr = new Date(year, month, d).toISOString().slice(0, 10);
+      const doneCount = Object.entries(doneByDate).filter(([key, val]) => val && key.endsWith(dateStr)).length;
+      const totalCount = elements.filter(el => !el.date || el.date >= dateStr).length;
+      dataDone.push(doneCount);
+      dataTotal.push(totalCount);
+    }
+  } else if (statsPeriod === 'year') {
+    labels = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    dataDone = new Array(12).fill(0);
+    dataTotal = new Array(12).fill(0);
+    const year = new Date().getFullYear();
+    Object.entries(doneByDate).forEach(([key, val]) => {
+      if (!val) return;
+      const datePart = key.split('|')[1];
+      if (!datePart) return;
+      const dt = new Date(datePart);
+      if (dt.getFullYear() === year) {
+        const m = dt.getMonth();
+        dataDone[m]++;
+      }
+    });
+    elements.forEach(el => {
+      if (!el.date) {
+        for(let i=0; i<12; i++) dataTotal[i]++;
+      } else {
+        const dt = new Date(el.date);
+        if (dt.getFullYear() === year) {
+          dataTotal[dt.getMonth()]++;
+        }
+      }
+    });
+  }
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Всего элементов',
+          data: dataTotal,
+          backgroundColor: 'rgba(124,77,255,0.6)',
+          borderRadius: 6,
+        },
+        {
+          label: 'Выполнено',
+          data: dataDone,
+          type: 'line',
+          fill: false,
+          borderColor: '#4caf50',
+          tension: 0.3,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: 'white',
+            stepSize: 1
+          }
+        },
+        x: {
+          ticks: {
+            color: 'white',
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {color: 'white'}
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          titleColor: 'white',
+          bodyColor: 'white',
+        }
+      }
+    }
+  });
+
+  renderDatesCircles();
+}
+
+function renderDatesCircles() {
+  const container = document.getElementById('statsDatesSections');
+  container.innerHTML = '';
+
+  let dates = [];
+  let dayLabels = [];
+
+  if (statsPeriod === 'week') {
+    const start = getMonday(new Date());
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(start);
+      dt.setDate(start.getDate() + i);
+      dates.push(dt);
+      dayLabels.push(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]);
+    }
+  } else if (statsPeriod === 'month') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      dates.push(new Date(year, month, d));
+      dayLabels.push(['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][new Date(year, month, d).getDay()]);
+    }
+  } else if (statsPeriod === 'year') {
+    const year = new Date().getFullYear();
+    for(let m = 0; m < 12; m++) {
+      dates.push(new Date(year, m, 1));
+      dayLabels.push(['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'][m]);
+    }
+  }
+
+  dates.forEach((dt, idx) => {
+    const dStr = dt.toISOString().slice(0,10);
+    const doneCount = Object.entries(doneByDate).filter(([key,val]) => val && key.endsWith(dStr)).length;
+
+    const section = document.createElement('div');
+    section.className = 'stats-dates-section';
+    section.setAttribute('tabindex', '0');
+    section.setAttribute('role', 'group');
+    section.setAttribute('aria-label', `День ${dayLabels[idx]}, дата ${dt.getDate()}.${dt.getMonth()+1}`);
+
+    const dayLabel = document.createElement('div');
+    dayLabel.className = 'day-label';
+    dayLabel.textContent = dayLabels[idx];
+    section.appendChild(dayLabel);
+
+    const circle = document.createElement('div');
+    circle.className = 'date-circle';
+    circle.textContent = dt.getDate();
+    if (doneCount > 0) {
+      circle.classList.add('done');
+    }
+    section.appendChild(circle);
+
+    container.appendChild(section);
+  });
+}
+
+const achievements = [
+  { id: 'ach1', title: 'Первая цель создана', condition: () => elements.some(e => e.type === 'goal') },
+  { id: 'ach2', title: '5 привычек создано', condition: () => elements.filter(e => e.type === 'habit').length >= 5 },
+  { id: 'ach3', title: '10 задач создано', condition: () => elements.filter(e => e.type === 'task').length >= 10 },
+  { id: 'ach4', title: 'Первое событие добавлено', condition: () => elements.some(e => e.type === 'event') },
+  { id: 'ach5', title: '3 подзадачи добавлено', condition: () => elements.filter(e => e.type === 'subtask').length >= 3 },
+  { id: 'ach6', title: 'Выполнено 1 элемент', condition: () => Object.values(doneByDate).filter(Boolean).length >= 1 },
+  { id: 'ach7', title: 'Выполнено 5 элементов', condition: () => Object.values(doneByDate).filter(Boolean).length >= 5 },
+  { id: 'ach8', title: 'Выполнено 10 элементов', condition: () => Object.values(doneByDate).filter(Boolean).length >= 10 },
+  { id: 'ach9', title: 'Элемент без срока создан', condition: () => elements.some(e => !e.date) },
+  { id: 'ach10', title: 'Цель с описанием', condition: () => elements.some(e => e.type === 'goal' && e.desc) },
+  { id: 'ach11', title: 'Задача с описанием', condition: () => elements.some(e => e.type === 'task' && e.desc) },
+  { id: 'ach12', title: 'Привычка со сроком', condition: () => elements.some(e => e.type === 'habit' && e.date) },
+  { id: 'ach13', title: 'Больше 20 элементов', condition: () => elements.length >= 20 },
+  { id: 'ach14', title: 'Последовательное выполнение (3 дня)', condition: () => checkStreak(3) },
+  { id: 'ach15', title: 'Последовательное выполнение (7 дней)', condition: () => checkStreak(7) },
+];
+
+function checkStreak(daysCount) {
+  if (Object.keys(doneByDate).length === 0) return false;
+  const datesDone = new Set();
+  for (const key in doneByDate) {
+    if (doneByDate[key]) {
+      const dt = key.split('|')[1];
+      datesDone.add(dt);
+    }
+  }
+  if (datesDone.size < daysCount) return false;
+  const datesArray = Array.from(datesDone).map(s => new Date(s).getTime()).sort();
+  let streak = 1;
+  for (let i=1; i<datesArray.length; i++) {
+    if (datesArray[i] - datesArray[i-1] === 86400000) streak++;
+    else streak = 1;
+    if (streak >= daysCount) return true;
+  }
+  return false;
+}
+
+function renderAccount() {
+  const container = document.querySelector('.achievements-container');
+  container.innerHTML = '';
+
+  const sorted = achievements.slice().sort((a,b) => {
+    const aEarned = a.condition();
+    const bEarned = b.condition();
+    if (aEarned && !bEarned) return -1;
+    if (!aEarned && bEarned) return 1;
+    return 0;
+  });
+
+  sorted.slice(0,15).forEach(ach => {
+    const div = document.createElement('div');
+    div.className = 'achievement ' + (ach.condition() ? 'earned' : 'not-earned');
+    div.textContent = ach.title;
+    div.tabIndex = 0;
+    div.setAttribute('role', 'button');
+    div.setAttribute('aria-pressed', 'false');
+    container.appendChild(div);
+  });
+
+  const leftArrow = document.querySelector('.achievements-arrow.left');
+  const rightArrow = document.querySelector('.achievements-arrow.right');
+  const achCont = document.querySelector('.achievements-container');
+
+  function updateArrows() {
+    leftArrow.disabled = achCont.scrollLeft === 0;
+    rightArrow.disabled = achCont.scrollLeft + achCont.clientWidth >= achCont.scrollWidth - 1;
+  }
+  updateArrows();
+
+  leftArrow.onclick = () => {
+    achCont.scrollBy({left: -230, behavior: 'smooth'});
+  };
+  rightArrow.onclick = () => {
+    achCont.scrollBy({left: 230, behavior: 'smooth'});
+  };
+  achCont.onscroll = updateArrows;
+
+  container.querySelectorAll('.achievement').forEach(div => {
+    div.onclick = () => {
+      alert(div.textContent);
+    };
+    div.onkeydown = (ev) => {
+      if(ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        div.click();
+      }
+    };
+  });
+
+  const statsDiv = document.getElementById('accountLists');
+  statsDiv.innerHTML = '';
+
+  const groups = ['goal', 'habit', 'task', 'subtask', 'event'];
+  groups.forEach(group => {
+    const groupEls = elements.filter(e => e.type === group);
+    if (groupEls.length === 0) return;
+
+    const nowDateStr = new Date().toISOString().slice(0,10);
+    let doneCount = 0, overdueCount = 0, inProcessCount = 0, plannedCount = 0;
+
+    groupEls.forEach(el => {
+      const elDoneDates = Object.entries(doneByDate)
+        .filter(([key,val]) => val && key.startsWith(el.id + '|'))
+        .map(([key]) => key.split('|')[1]);
+      const hasDone = elDoneDates.length > 0;
+
+      if (el.date && el.date < nowDateStr) {
+        if (hasDone) doneCount++;
+        else overdueCount++;
+      } else if (!el.date || el.date >= nowDateStr) {
+        if (hasDone) inProcessCount++;
+        else plannedCount++;
+      }
+    });
+
+    const h4 = document.createElement('h4');
+    h4.textContent = RUS_TYPES[group];
+    h4.tabIndex = 0;
+    h4.setAttribute('role', 'button');
+    h4.setAttribute('aria-expanded', 'false');
+    h4.style.userSelect = 'none';
+
+    const pDone = document.createElement('p');
+    pDone.textContent = `Достигнуто: ${doneCount}`;
+    const pOverdue = document.createElement('p');
+    pOverdue.textContent = `Просрочено: ${overdueCount}`;
+    const pInProcess = document.createElement('p');
+    pInProcess.textContent = `В процессе: ${inProcessCount}`;
+    const pPlanned = document.createElement('p');
+    pPlanned.textContent = `Запланировано: ${plannedCount}`;
+
+    const descBox = document.createElement('div');
+    descBox.style.display = 'none';
+
+    h4.onclick = () => {
+      const expanded = h4.getAttribute('aria-expanded') === 'true';
+      h4.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      if (expanded) {
+        descBox.style.display = 'none';
+        document.getElementById('elementDescBox').textContent = '';
+      } else {
+        descBox.style.display = 'block';
+        document.getElementById('elementDescBox').textContent = '';
+        descBox.innerHTML = '';
+        groupEls.forEach(el => {
+          const p = document.createElement('p');
+          p.textContent = `${el.title}`;
+          p.style.cursor = 'pointer';
+          p.style.textDecoration = 'underline';
+          p.title = 'Кликните для просмотра описания';
+          p.tabIndex = 0;
+          p.onclick = () => {
+            const desc = el.desc || '(без описания)';
+            const dateStr = el.date ? ` (до ${el.date})` : ' (бессрочно)';
+            const doneCount = Object.entries(doneByDate).filter(([key,val]) => val && key.startsWith(el.id + '|')).length;
+            const status = doneCount > 0 ? 'Выполнено' : 'Не выполнено';
+            document.getElementById('elementDescBox').textContent = `${RUS_TYPES[el.type]}: ${el.title}${dateStr}\nСтатус: ${status}\nОписание: ${desc}`;
+          };
+          p.onkeydown = ev => {
+            if(ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              p.click();
+            }
+          };
+          descBox.appendChild(p);
+        });
+      }
+    };
+
+    statsDiv.appendChild(h4);
+    statsDiv.appendChild(pDone);
+    statsDiv.appendChild(pOverdue);
+    statsDiv.appendChild(pInProcess);
+    statsDiv.appendChild(pPlanned);
+    statsDiv.appendChild(descBox);
+  });
+}
+
+const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+const clearDoneHistoryBtn = document.getElementById('clearDoneHistoryBtn');
+
+clearAllHistoryBtn.onclick = () => {
+  if (confirm('Вы уверены? Это удалит все элементы и всю историю выполнения!')) {
+    elements = [];
+    doneByDate = {};
+    saveElements();
+    saveDoneByDate();
+    renderAccount();
+    if (!pageMain.classList.contains('hidden')) renderTasks(selectedDate);
+    if (!pageCreate.classList.contains('hidden')) renderRecent();
+    if (!pageStats.classList.contains('hidden')) renderStats();
+  }
+};
+
+clearDoneHistoryBtn.onclick = () => {
+  if (confirm('Вы уверены? Это удалит только отметки выполнения, сами элементы останутся.')) {
+    doneByDate = {};
+    saveDoneByDate();
+    renderAccount();
+    if (!pageMain.classList.contains('hidden')) renderTasks(selectedDate);
+    if (!pageStats.classList.contains('hidden')) renderStats();
+  }
+};
+
+setActivePage(pageMain);
+renderWeek();
+</script>
+
+</body>
+</html>
